@@ -48,7 +48,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/OddAir/gitargotest # <--- ENDRE DENNE
+          images: ghcr.io/OddAir/gitargotest
           tags: type=sha,prefix= # Lager en tag basert på kort commit-SHA
       - name: Logg inn på GHCR
         uses: docker/login-action@v3
@@ -73,13 +73,14 @@ jobs:
       - name: Sjekk ut konfigurasjons-repoen
         uses: actions/checkout@v4
         with:
-          repository: OddAir/gitargotest-config # <--- ENDRE DENNE
+          repository: OddAir/gitargotest-config
           token: ${{ secrets.CONFIG_REPO_PAT }}
 
       - name: Oppdater image-tag i deployment.yaml
         run: |
           # Bruker 'sed' for å finne og erstatte image-taggen
-          sed -i 's|image: .*|image: ghcr.io/ditt-brukernavn/gitargotest:${{ needs.build-and-push.outputs.image_tag }}|g' deployment.yaml
+          # FIKS: Byttet ut 'ditt-brukernavn' med det faktiske repo-navnet
+          sed -i 's|image: .*|image: ghcr.io/${{ github.repository }}:${{ needs.build-and-push.outputs.image_tag }}|g' deployment.yaml
           
       - name: Commit og push endringene
         run: |
