@@ -77,7 +77,7 @@ jobs:
           token: ${{ secrets.CONFIG_REPO_PAT }}
       - name: Oppdater image-tag i deployment.yaml
         run: |
-          IMAGE_NAME="ghcr.io/${{ lower(github.repository) }}:${{ needs.build-and-push.outputs.image_tag }}"
+          IMAGE_NAME="ghcr.io/${{ github.repository }}:${{ needs.build-and-push.outputs.image_tag }}"
           sed -i "s|image: .*|image: $IMAGE_NAME|g" deployment.yaml
       - name: Commit og push endringene
         run: |
