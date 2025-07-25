@@ -16,7 +16,7 @@ function connectToInfluxDB() {
 }
 
 app.get('/', (req, res) => {
-  res.send(`Heisann, verden! Appen kjører.`);
+  res.send(`dette fungerer nå.`);
 });
 
 // En "test"-funksjon vi kan kalle fra CI
