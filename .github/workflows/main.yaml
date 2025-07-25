@@ -1,0 +1,95 @@
+name: CI/CD Pipeline med Argo CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # JOBB 1: TEST (bruker service containers for databaser)
+  test:
+    name: 🧪 Test med Databaser
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env: { POSTGRES_USER: testuser, POSTGRES_PASSWORD: testpassword, POSTGRES_DB: testdb }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      influxdb:
+        image: influxdb:2.7
+        ports: ['8086:8086']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 18.x, cache: 'npm' }
+      - run: npm install
+      - name: Kjør tester
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: testuser
+          INFLUXDB_HOST: localhost
+        run: npm test
+
+  # JOBB 2: BYGG OG PUBLISER (bygger og pusher Docker image)
+  build-and-push:
+    name: 🐳 Bygg og Publiser Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generer Docker-metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/OddAir/gitargotest # <--- ENDRE DENNE
+          tags: type=sha,prefix= # Lager en tag basert på kort commit-SHA
+      - name: Logg inn på GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bygg og push Docker-image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # JOBB 3: DEPLOY (oppdaterer den andre Git-repoen)
+  deploy:
+    name: 🚀 Oppdater Konfigurasjons-Repo
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sjekk ut konfigurasjons-repoen
+        uses: actions/checkout@v4
+        with:
+          repository: OddAir/gitargotest-config # <--- ENDRE DENNE
+          token: ${{ secrets.CONFIG_REPO_PAT }}
+
+      - name: Oppdater image-tag i deployment.yaml
+        run: |
+          # Bruker 'sed' for å finne og erstatte image-taggen
+          sed -i 's|image: .*|image: ghcr.io/ditt-brukernavn/gitargotest:${{ needs.build-and-push.outputs.image_tag }}|g' deployment.yaml
+          
+      - name: Commit og push endringene
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions-bot@github.com"
+          git add deployment.yaml
+          # Commit kun hvis det faktisk er endringer
+          if git diff --staged --quiet; then
+            echo "Ingen endringer i manifestet."
+          else
+            git commit -m "Oppdater image til ${{ needs.build-and-push.outputs.image_tag }}"
+            git push
+          fi

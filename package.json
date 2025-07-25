@@ -1,0 +1,24 @@
+{
+  "name": "gitargotest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test" : "node app.js test" 
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OddAir/gitargotest.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OddAir/gitargotest/issues"
+  },
+  "homepage": "https://github.com/OddAir/gitargotest#readme",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
